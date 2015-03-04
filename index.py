@@ -2,6 +2,9 @@ import argparse
 import nltk
 import os
 import sys
+import string
+
+PUNCTUATION = set(string.punctuation)
 
 def main():
   # parser = argparse.ArgumentParser(prog='CS3245 HW2', description='CS3245 HW2')
@@ -18,7 +21,36 @@ def main():
   dictionary_file_name = 'dictionary.txt'
   postings_file_name = 'postings.txt'
 
-  
+  stemmer = nltk.stem.porter.PorterStemmer()
+
+  token_id = 0
+  dictionary = {}
+
+  out_file = open('tuples.txt', 'w')
+
+  for doc_id in os.listdir(directory_path):
+    doc_path = os.path.join(directory_path, doc_id)
+
+    with open(doc_path, 'r') as f:
+      for line in f:
+        tokens = nltk.word_tokenize(line)
+        tokens = [token for token in tokens if token not in PUNCTUATION]
+        tokens = [stemmer.stem(token.lower()) for token in tokens]
+
+        for token in tokens:
+          if token not in dictionary:
+            dictionary[token] = token_id
+            token_id += 1
+
+          out_file.write(str(dictionary[token]))
+          out_file.write(' ')
+          out_file.write(doc_id)
+          out_file.write(' ')
+          out_file.write(token)
+          out_file.write('\n')
+
+  out_file.close()
+
 
 if __name__ == '__main__':
   main()
