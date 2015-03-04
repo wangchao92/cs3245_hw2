@@ -3,6 +3,7 @@ import nltk
 import os
 import sys
 import string
+import extsort
 
 PUNCTUATION = set(string.punctuation)
 
@@ -30,6 +31,7 @@ def main():
 
   for doc_id in os.listdir(directory_path):
     doc_path = os.path.join(directory_path, doc_id)
+    seen_tokens = set()
 
     with open(doc_path, 'r') as f:
       for line in f:
@@ -38,19 +40,24 @@ def main():
         tokens = [stemmer.stem(token.lower()) for token in tokens]
 
         for token in tokens:
-          if token not in dictionary:
-            dictionary[token] = token_id
-            token_id += 1
+          if token not in seen_tokens:
+            seen_tokens.add(token)
 
-          out_file.write(str(dictionary[token]))
-          out_file.write(' ')
-          out_file.write(doc_id)
-          out_file.write(' ')
-          out_file.write(token)
-          out_file.write('\n')
+            if token not in dictionary:
+              dictionary[token] = token_id
+              token_id += 1
+
+            out_file.write(str(dictionary[token]))
+            out_file.write(' ')
+            out_file.write(doc_id)
+            out_file.write(' ')
+            out_file.write(token)
+            out_file.write('\n')
 
   out_file.close()
 
+  sorter = extsort.ExternalSort(extsort.parse_memory('100M'))
+  sorter.sort('tuples.txt')
 
 if __name__ == '__main__':
   main()
