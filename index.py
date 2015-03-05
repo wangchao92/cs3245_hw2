@@ -1,63 +1,89 @@
 import argparse
 import nltk
 import os
-import sys
+import pickle
 import string
-import extsort
 
 PUNCTUATION = set(string.punctuation)
 
+
 def main():
-  # parser = argparse.ArgumentParser(prog='CS3245 HW2', description='CS3245 HW2')
-  # parser.add_argument('-i', required=True, help='directory-of-documents')
-  # parser.add_argument('-d', required=True, help='dictionary-file')
-  # parser.add_argument('-p', required=True, help='postings-file')
+    parser = argparse.ArgumentParser(
+        prog='CS3245 HW2', description='CS3245 HW2')
+    parser.add_argument('-i', required=True, help='directory-of-documents')
+    parser.add_argument('-d', required=True, help='dictionary-file')
+    parser.add_argument('-p', required=True, help='postings-file')
 
-  # args = parser.parse_args()
-  # directory_path = args.i
-  # dictionary_file_name = args.d
-  # postings_file_name = args.p
+    args = parser.parse_args()
+    directory_path = args.i
+    dictionary_file_name = args.d
+    postings_file_name = args.p
 
-  directory_path = 'test'
-  dictionary_file_name = 'dictionary.txt'
-  postings_file_name = 'postings.txt'
+    build_index(directory_path, dictionary_file_name, postings_file_name)
 
-  stemmer = nltk.stem.porter.PorterStemmer()
 
-  token_id = 0
-  dictionary = {}
+def build_index(directory_path='test', dictionary_file_name='dictionary.txt', postings_file_name='postings.txt'):
+    doc_file_names = os.listdir(directory_path)
+    doc_file_names.sort(key=int)
 
-  out_file = open('tuples.txt', 'w')
+    stemmer = nltk.stem.porter.PorterStemmer()
 
-  for doc_id in os.listdir(directory_path):
-    doc_path = os.path.join(directory_path, doc_id)
-    seen_tokens = set()
+    postings_lists = {}
 
-    with open(doc_path, 'r') as f:
-      for line in f:
-        tokens = nltk.word_tokenize(line)
-        tokens = [token for token in tokens if token not in PUNCTUATION]
-        tokens = [stemmer.stem(token.lower()) for token in tokens]
+    for doc_file_name in doc_file_names:
+        doc_file_path = os.path.join(directory_path, doc_file_name)
+        doc = open(doc_file_path, 'r')
 
-        for token in tokens:
-          if token not in seen_tokens:
-            seen_tokens.add(token)
+        seen_terms = set()
 
-            if token not in dictionary:
-              dictionary[token] = token_id
-              token_id += 1
+        for line in doc:
+            tokens = nltk.word_tokenize(line)
+            terms = [stemmer.stem(token.lower())
+                      for token in tokens if token not in PUNCTUATION]
 
-            out_file.write(str(dictionary[token]))
-            out_file.write(' ')
-            out_file.write(doc_id)
-            out_file.write(' ')
-            out_file.write(token)
-            out_file.write('\n')
+            for term in terms:
+                if term not in seen_terms:
+                    seen_terms.add(term)
 
-  out_file.close()
+                    if term not in postings_lists:
+                        postings_lists[term] = []
 
-  sorter = extsort.ExternalSort(extsort.parse_memory('100M'))
-  sorter.sort('tuples.txt')
+                    postings_lists[term].append(doc_file_name)
+
+        doc.close()
+
+    ptr_dictionary = {}
+
+    postings_file = open(postings_file_name, 'w')
+
+    for term, postings_list in postings_lists.iteritems():
+        start_ptr = postings_file.tell()
+
+        postings_list = pickle.dumps(postings_list)
+        postings_file.write(postings_list)
+
+        end_ptr = postings_file.tell()
+
+        ptr_dictionary[term] = (start_ptr, end_ptr)
+
+    postings_file.close()
+
+    copy_postings_lists = {}
+    with open(postings_file_name, 'r') as postings_file:
+        for term, (start_ptr, end_ptr) in ptr_dictionary.iteritems():
+            postings_file.seek(start_ptr)
+
+            postings_list = postings_file.read(end_ptr - start_ptr)
+            postings_list = pickle.loads(postings_list)
+
+            copy_postings_lists[term] = postings_list
+
+    for term, postings_list in postings_lists.iteritems():
+        print term, postings_lists[term]
+        print term, copy_postings_lists[term]
+
+    with open(dictionary_file_name, 'w') as dictionary_file:
+        pickle.dump(ptr_dictionary, dictionary_file)
 
 if __name__ == '__main__':
-  main()
+    build_index()
