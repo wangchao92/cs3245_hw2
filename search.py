@@ -88,5 +88,38 @@ def intersect(list_a, list_b, negate_a=False, negate_b=False):
 
     return result
 
+
+def union(list_a, list_b, negate_a=False, negate_b=False):
+    # Optimise
+    if negate_a:
+        list_a = negate(list_a)
+
+    if negate_b:
+        list_b = negate(list_b)
+
+    result = []
+    i = j = 0
+    while i < len(list_a) and j < len(list_b):
+        if list_a[i] == list_b[j]:
+            result.append(list_a[i])
+            i += 1
+            j += 1
+        elif list_a[i] > list_b[j]:
+            result.append(list_b[j])
+            j += 1
+        else:
+            result.append(list_a[i])
+            i += 1
+
+    if i < len(list_a):
+        result.extend(list_a[i:])
+
+    if j < len(list_b):
+        result.extend(list_b[j:])
+
+    return result
+
 if __name__ == '__main__':
     print intersect(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], ['1', '4', '9', '10'])
+
+    print union(['0', '2', '4', '6', '7', '8', '9', '10'], ['0', '1', '2', '3', '4', '5', '6'])
