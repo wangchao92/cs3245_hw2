@@ -121,7 +121,51 @@ def union(list_a, list_b, negate_a=False, negate_b=False):
 
     return result
 
-if __name__ == '__main__':
-    print intersect(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], ['1', '4', '9', '10'])
+def toRPN(query):
+    words = query.replace('(', ' ( ').replace(')', ' ) ').split() # "Spread" the parentheses.
+    operator_stack = [] # Temporary operator stack.
+    rpn = [] # Final reverse polish notation list.
 
-    print union(['0', '2', '4', '6', '7', '8', '9', '10'], ['0', '1', '2', '3', '4', '5', '6'])
+    for word in words:
+        if word == '(':
+            operator_stack.append('(')
+
+        elif word == ')': # Pop everything until a ) is found, then pop ).
+            if len(operator_stack) != 0:
+                while operator_stack[len(operator_stack) - 1] != '(':
+                    rpn.append(operator_stack.pop())
+
+                if operator_stack[len(operator_stack) - 1] == '(':
+                    operator_stack.pop()
+
+        elif word == 'NOT':
+            operator_stack.append('NOT')
+
+        elif word == 'AND': # Pop all NOTs before appending to operator stack.
+            if len(operator_stack) != 0:
+                while operator_stack[len(operator_stack) - 1] == 'NOT':
+                    rpn.append(operator_stack.pop())
+
+            operator_stack.append('AND')
+
+        elif word == 'OR': # Pop all NOTs and ANDs before appending operator stack.
+            if len(operator_stack) != 0:
+                last = operator_stack[len(operator_stack) - 1]
+
+                while last == 'NOT' or last == 'AND':
+                    rpn.append(operator_stack.pop())
+                    last = operator_stack[len(operator_stack) - 1]
+
+            operator_stack.append('OR')
+
+        else: # If it's a token, append to rpn.
+            rpn.append(word)
+
+    while len(operator_stack) != 0: # Append remainder of operator stack to rpn.
+        rpn.append(operator_stack.pop())
+
+if __name__ == '__main__':
+    # print intersect(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], ['1', '4', '9', '10'])
+
+    # print union(['0', '2', '4', '6', '7', '8', '9', '10'], ['0', '1', '2', '3', '4', '5', '6'])
+    toRPN('bill OR Gates AND (vista OR XP) AND NOT mac')
