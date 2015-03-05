@@ -111,11 +111,13 @@ def union(list_a, list_b, negate_a=False, negate_b=False):
             result.append(list_a[i])
             i += 1
 
-    if i < len(list_a):
-        result.extend(list_a[i:])
+    while i < len(list_a):
+        result.append(list_a[i])
+        i += 1
 
-    if j < len(list_b):
-        result.extend(list_b[j:])
+    while j < len(list_b):
+        result.append(list_b[j])
+        j += 1
 
     return result
 
