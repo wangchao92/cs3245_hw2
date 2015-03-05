@@ -39,7 +39,7 @@ def build_index(directory_path='test', dictionary_file_name='dictionary.txt', po
         for line in doc:
             tokens = nltk.word_tokenize(line)
             terms = [stemmer.stem(token.lower())
-                      for token in tokens if token not in PUNCTUATION]
+                     for token in tokens if token not in PUNCTUATION]
 
             for term in terms:
                 if term not in seen_terms:
@@ -79,7 +79,7 @@ def build_index(directory_path='test', dictionary_file_name='dictionary.txt', po
             copy_postings_lists[term] = postings_list
 
     for term, postings_list in postings_lists.iteritems():
-        print term, postings_lists[term]
+        print term, postings_list
         print term, copy_postings_lists[term]
 
     with open(dictionary_file_name, 'w') as dictionary_file:
