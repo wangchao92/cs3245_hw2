@@ -30,8 +30,13 @@ def execute_queries(dictionary_file_name='dictionary.txt', postings_file_name='p
     with open(dictionary_file_name, 'r') as dictionary_file:
         ptr_dictionary = pickle.load(dictionary_file)
 
+    postings_file = open(postings_file_name, 'r')
+
     global universal_set
-    universal_set = ptr_dictionary['.']
+    start_ptr, end_ptr = ptr_dictionary['.']
+    universal_set = postings_file.read(end_ptr - start_ptr)
+    universal_set = pickle.loads(universal_set)
+
     global total_count
     total_count = len(universal_set)
 
@@ -41,6 +46,8 @@ def execute_queries(dictionary_file_name='dictionary.txt', postings_file_name='p
         pass
 
     query_file.close()
+
+    postings_file.close()
 
 
 def negate(postings_list):
@@ -82,4 +89,4 @@ def intersect(list_a, list_b, negate_a=False, negate_b=False):
     return result
 
 if __name__ == '__main__':
-    print intersect([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 4, 9])
+    print intersect(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], ['1', '4', '9', '10'])
