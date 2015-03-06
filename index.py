@@ -53,15 +53,18 @@ def build_index(directory_path='test', dictionary_file_name='dictionary.txt', po
 
             for term in terms:
                 # Avoid duplicate doc ids for the same term
-                if term not in seen_terms:
-                    seen_terms.add(term)
+                try:
+                    float(term)
+                except ValueError:
+                    if term not in seen_terms:
+                        seen_terms.add(term)
 
-                    # Initialise postings list for new term
-                    if term not in postings_lists:
-                        postings_lists[term] = []
+                        # Initialise postings list for new term
+                        if term not in postings_lists:
+                            postings_lists[term] = []
 
-                    # Add doc id to postings list
-                    postings_lists[term].append(int(doc_file_name))
+                        # Add doc id to postings list
+                        postings_lists[term].append(int(doc_file_name))
 
         doc.close()
 
@@ -90,5 +93,5 @@ def build_index(directory_path='test', dictionary_file_name='dictionary.txt', po
         pickle.dump(ptr_dictionary, dictionary_file)
 
 if __name__ == '__main__':
-    build_index()
-    # main()
+    # build_index()
+    main()
