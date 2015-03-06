@@ -6,6 +6,9 @@ import string
 
 PUNCTUATION = set(string.punctuation)
 UNIVERSAL_SET_KEY = '.'
+NOT_PREFIX = 'N_'
+OR_PREFIX = 'O_'
+AND_PREFIX = 'A_'
 
 
 def main():
@@ -41,12 +44,16 @@ def execute_queries(dictionary_file_name='dictionary.txt', postings_file_name='p
     global total_count
     total_count = len(universal_set)
 
-    # query_file = open(query_file_name, 'r')
+    global results
+    results = {}
 
-    # for line in query_file:
-    #     pass
+    query_file = open(query_file_name, 'r')
 
-    # query_file.close()
+    for line in query_file:
+        print(line)
+        print(apply_RPN(toRPN(line)))
+
+    query_file.close()
 
     postings_file.close()
 
@@ -169,25 +176,71 @@ def toRPN(query):
 
 def apply_RPN(rpn):
     stack = []
+    result = []
+
     for element in rpn:
         if element == 'NOT':
-            pass
+            a = stack.pop()
+
+            a_list = get_postings_list(a)
+
+            result_key = NOT_PREFIX + a
+            result = negate(a_list)
+            results[result_key] = result
+
+            stack.append(result_key)
+
         elif element == 'AND':
-            pass
+            a = stack.pop()
+            b = stack.pop()
+
+            a_list = get_postings_list(a)
+            b_list = get_postings_list(b)
+
+            result_key = AND_PREFIX + a + b
+            result = intersect(a_list, b_list)
+            results[result_key] = result
+
+            stack.append(result_key)
+
         elif element == 'OR':
-            # a = stack.pop()
-            # b = stack.pop()
-            # c = union(read_postings_list(a), read_postings_list(b))
-            # stack.append(c)
-            pass
+            a = stack.pop()
+            b = stack.pop()
+
+            a_list = get_postings_list(a)
+            b_list = get_postings_list(b)
+
+            result_key = OR_PREFIX + a + b
+            result = union(a_list, b_list)
+            results[result_key] = result
+
+            stack.append(result_key)
+
         else:
+            result = get_postings_list(element)
             stack.append(element)
+
+    return result
+
+
+def get_postings_list(token):
+    """
+    Returns an existing, calculated result or
+    reads from the postings file by the token.
+    """
+    if token in results:
+        return results[token]
+    else:
+        return read_postings_list(token)
 
 
 def read_postings_list(token):
     """
     Returns the entire postings list of a token.
     """
+    if token not in ptr_dictionary:
+        return []
+
     start_ptr, end_ptr = ptr_dictionary[token]
     postings_file.seek(start_ptr)
     postings_list_pickle = postings_file.read(end_ptr - start_ptr)

@@ -36,7 +36,7 @@ def build_index(directory_path='test', dictionary_file_name='dictionary.txt', po
         doc_file_path = os.path.join(directory_path, doc_file_name)
         doc = open(doc_file_path, 'r')
 
-        postings_lists[UNIVERSAL_SET_KEY].append(doc_file_name)
+        postings_lists[UNIVERSAL_SET_KEY].append(int(doc_file_name))
 
         seen_terms = set()
 
@@ -53,7 +53,7 @@ def build_index(directory_path='test', dictionary_file_name='dictionary.txt', po
                     if term not in postings_lists:
                         postings_lists[term] = []
 
-                    postings_lists[term].append(doc_file_name)
+                    postings_lists[term].append(int(doc_file_name))
 
         doc.close()
 
