@@ -4,6 +4,10 @@ import os
 import pickle
 import string
 
+IGNORE_STOPWORDS = False
+if IGNORE_STOPWORDS:
+    stopwords = set(nltk.corpus.stopwords.words('english'))
+
 PUNCTUATION = set(string.punctuation)
 UNIVERSAL_SET_KEY = '.'
 
@@ -23,7 +27,7 @@ def main():
     build_index(directory_path, dictionary_file_name, postings_file_name)
 
 
-def build_index(directory_path='test', dictionary_file_name='dictionary.txt', postings_file_name='postings.txt'):
+def build_index(directory_path='/home/blym/nltk_data/corpora/reuters/training/', dictionary_file_name='dictionary.txt', postings_file_name='postings.txt'):
     # Sort file names numerically, not lexicographically
     doc_file_names = os.listdir(directory_path)
     doc_file_names.sort(key=int)
@@ -47,9 +51,9 @@ def build_index(directory_path='test', dictionary_file_name='dictionary.txt', po
             tokens = nltk.word_tokenize(line)
 
             # terms is an array of stemmed lowercase tokens that are not
-            # punctuation
+            # punctuation, or stopwords if IGNORE_STOPWORDS is true
             terms = [stemmer.stem(token.lower())
-                     for token in tokens if token not in PUNCTUATION]
+                     for token in tokens if token not in PUNCTUATION and not (IGNORE_STOPWORDS and token in stopwords)]
 
             for term in terms:
                 # Avoid duplicate doc ids for the same term
