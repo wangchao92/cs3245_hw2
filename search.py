@@ -148,7 +148,7 @@ def toRPN(query):
 
             operator_stack.append('AND')
 
-        elif word == 'OR': # Pop all NOTs and ANDs before appending operator stack.
+        elif word == 'OR': # Pop all NOTs and ANDs before appending to operator stack.
             if len(operator_stack) != 0:
                 last = operator_stack[len(operator_stack) - 1]
 
@@ -163,6 +163,8 @@ def toRPN(query):
 
     while len(operator_stack) != 0: # Append remainder of operator stack to rpn.
         rpn.append(operator_stack.pop())
+
+    return rpn
 
 if __name__ == '__main__':
     # print intersect(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], ['1', '4', '9', '10'])
