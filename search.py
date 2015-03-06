@@ -6,6 +6,7 @@ import string
 
 PUNCTUATION = set(string.punctuation)
 UNIVERSAL_SET_KEY = '.'
+NULL_SET_KEY = ','
 NOT_PREFIX = 'N_'
 OR_PREFIX = 'O_'
 AND_PREFIX = 'A_'
@@ -50,6 +51,7 @@ def execute_queries(dictionary_file_name='dictionary.txt', postings_file_name='p
     query_file = open(query_file_name, 'r')
 
     for line in query_file:
+        results = {} # Clears the intermediate results, in case of conflicts.
         print(line)
         print(apply_RPN(toRPN(line)))
 
@@ -81,7 +83,7 @@ def intersect(list_a, list_b, negate_a=False, negate_b=False):
                 j += 1
 
             # Add doc_id if it is less than current list_b element, or we have reached the end of list_b
-            if doc_id < list_b[j] or j == len(list_b):
+            if j == len(list_b) or doc_id < list_b[j]:
                 result.append(doc_id)
     else:
         sqrt_a = int(math.sqrt(len(list_a)))
@@ -173,7 +175,7 @@ def toRPN(query):
             operator_stack.append('OR')
 
         else: # If it's a token, append to rpn.
-            rpn.append(word)
+            rpn.append(word.lower())
 
     while len(operator_stack) != 0: # Append remainder of operator stack to rpn.
         rpn.append(operator_stack.pop())
@@ -181,49 +183,59 @@ def toRPN(query):
     return rpn
 
 def apply_RPN(rpn):
-    stack = []
-    result = []
+    stack = [] # Stack of operands.
+    result = [] # We will return this at the end of the method. 
 
-    for element in rpn:
+    result = get_postings_list(rpn[0]) # Gets the posting list of the first operand.
+
+    # For each element in the rpn...
+    for i, element in enumerate(rpn):
+
         if element == 'NOT':
             a = stack.pop()
 
-            a_list = get_postings_list(a)
+            if i == len(rpn) - 1: # Only negate operation if NOT is the last element.
+                a_list = get_postings_list(a if a[0:2] != NOT_PREFIX else a[2:])
+                result = negate(a_list)
 
+            # Push the new key into the stack of operands.
             result_key = NOT_PREFIX + a
-            result = negate(a_list)
-            results[result_key] = result
-
             stack.append(result_key)
 
         elif element == 'AND':
             a = stack.pop()
             b = stack.pop()
 
-            a_list = get_postings_list(a)
-            b_list = get_postings_list(b)
+            # Get the postings list of the elements, stripping the NOT_PREFIX.
+            a_list = get_postings_list(a if a[0:2] != NOT_PREFIX else a[2:])
+            b_list = get_postings_list(b if b[0:2] != NOT_PREFIX else b[2:])
 
-            result_key = AND_PREFIX + a + b
-            result = intersect(a_list, b_list)
+            # Intersection of a and b, and whether a or b are to be negated.
+            result = intersect(a_list, b_list, a[0:2] == NOT_PREFIX, b[0:2] == NOT_PREFIX)
+
+            # Push the new key into results and the stack of operands.
+            result_key = AND_PREFIX + a + '_' + b
             results[result_key] = result
-
             stack.append(result_key)
 
         elif element == 'OR':
             a = stack.pop()
             b = stack.pop()
 
-            a_list = get_postings_list(a)
-            b_list = get_postings_list(b)
+            # Get the postings list of the elements, stripping the NOT_PREFIX.
+            a_list = get_postings_list(a if a[0:2] != NOT_PREFIX else a[2:])
+            b_list = get_postings_list(b if b[0:2] != NOT_PREFIX else b[2:])
 
-            result_key = OR_PREFIX + a + b
-            result = union(a_list, b_list)
+            # Union of a and b, and whether a or b are to be negated.
+            result = union(a_list, b_list, a[0:2] == NOT_PREFIX, b[0:2] == NOT_PREFIX)
+
+            # Push the new key into results and the stack of operands.
+            result_key = OR_PREFIX + a + '_' + b
             results[result_key] = result
-
             stack.append(result_key)
 
         else:
-            result = get_postings_list(element)
+            # Just append to the stack of operands.
             stack.append(element)
 
     return result
