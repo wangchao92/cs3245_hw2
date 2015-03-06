@@ -66,39 +66,51 @@ def negate(postings_list):
 
 
 def intersect(list_a, list_b, negate_a=False, negate_b=False):
-    # Optimise
-    if negate_a:
-        list_a = negate(list_a)
-
-    if negate_b:
-        list_b = negate(list_b)
-
-    sqrt_a = int(math.sqrt(len(list_a)))
-    sqrt_b = int(math.sqrt(len(list_b)))
-
     result = []
-    i = j = 0
-    while i < len(list_a) and j < len(list_b):
-        if list_a[i] == list_b[j]:
-            result.append(list_a[i])
-            i += 1
-            j += 1
-        elif list_a[i] > list_b[j]:
-            if j % sqrt_b == 0 and j + sqrt_b < len(list_b) and list_a[i] >= list_b[j + sqrt_b]:
-                j += sqrt_b
-            else:
+
+    if negate_a and negate_b:
+        return negate(union(list_a, list_b))
+    elif negate_a is not negate_b:
+        if negate_a:
+            list_a, list_b = list_b, list_a
+
+        j = 0
+        for doc_id in list_a:
+            # Iterate over list_b until we find an equal or greater element
+            while j < len(list_b) and doc_id > list_b[j]:
                 j += 1
-        else:
-            if i % sqrt_a == 0 and i + sqrt_a < len(list_a) and list_a[i + sqrt_a] <= list_b[j]:
-                i += sqrt_a
-            else:
+
+            # Add doc_id if it is less than current list_b element, or we have reached the end of list_b
+            if doc_id < list_b[j] or j == len(list_b):
+                result.append(doc_id)
+    else:
+        sqrt_a = int(math.sqrt(len(list_a)))
+        sqrt_b = int(math.sqrt(len(list_b)))
+
+        i = j = 0
+        while i < len(list_a) and j < len(list_b):
+            if list_a[i] == list_b[j]:
+                result.append(list_a[i])
                 i += 1
+                j += 1
+            elif list_a[i] > list_b[j]:
+                if j % sqrt_b == 0 and j + sqrt_b < len(list_b) and list_a[i] >= list_b[j + sqrt_b]:
+                    j += sqrt_b
+                else:
+                    j += 1
+            else:
+                if i % sqrt_a == 0 and i + sqrt_a < len(list_a) and list_a[i + sqrt_a] <= list_b[j]:
+                    i += sqrt_a
+                else:
+                    i += 1
 
     return result
 
 
 def union(list_a, list_b, negate_a=False, negate_b=False):
-    # Optimise
+    if negate_a and negate_b:
+        return negate(intersect(list_a, list_b))
+
     if negate_a:
         list_a = negate(list_a)
 
@@ -139,30 +151,24 @@ def toRPN(query):
             operator_stack.append('(')
 
         elif word == ')': # Pop everything until a ) is found, then pop ).
-            if len(operator_stack) != 0:
-                while operator_stack[len(operator_stack) - 1] != '(':
-                    rpn.append(operator_stack.pop())
+            while len(operator_stack) != 0 and operator_stack[len(operator_stack) - 1] != '(':
+                rpn.append(operator_stack.pop())
 
-                if operator_stack[len(operator_stack) - 1] == '(':
-                    operator_stack.pop()
+            if operator_stack[len(operator_stack) - 1] == '(':
+                operator_stack.pop()
 
         elif word == 'NOT':
             operator_stack.append('NOT')
 
         elif word == 'AND': # Pop all NOTs before appending to operator stack.
-            if len(operator_stack) != 0:
-                while operator_stack[len(operator_stack) - 1] == 'NOT':
-                    rpn.append(operator_stack.pop())
+            while len(operator_stack) != 0 and operator_stack[len(operator_stack) - 1] == 'NOT':
+                rpn.append(operator_stack.pop())
 
             operator_stack.append('AND')
 
         elif word == 'OR': # Pop all NOTs and ANDs before appending to operator stack.
-            if len(operator_stack) != 0:
-                last = operator_stack[len(operator_stack) - 1]
-
-                while last == 'NOT' or last == 'AND':
-                    rpn.append(operator_stack.pop())
-                    last = operator_stack[len(operator_stack) - 1]
+            while len(operator_stack) != 0 and (operator_stack[len(operator_stack) - 1] == 'NOT' or operator_stack[len(operator_stack) - 1] == 'AND'):
+                rpn.append(operator_stack.pop())
 
             operator_stack.append('OR')
 
