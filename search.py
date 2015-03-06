@@ -5,6 +5,7 @@ import pickle
 import string
 
 PUNCTUATION = set(string.punctuation)
+UNIVERSAL_SET_KEY = '.'
 
 
 def main():
@@ -26,26 +27,26 @@ def main():
 
 
 def execute_queries(dictionary_file_name='dictionary.txt', postings_file_name='postings.txt', query_file_name='query.txt', output_file_name='output.txt'):
+    global ptr_dictionary
     ptr_dictionary = None
     with open(dictionary_file_name, 'r') as dictionary_file:
         ptr_dictionary = pickle.load(dictionary_file)
 
+    global postings_file
     postings_file = open(postings_file_name, 'r')
 
     global universal_set
-    start_ptr, end_ptr = ptr_dictionary['.']
-    universal_set = postings_file.read(end_ptr - start_ptr)
-    universal_set = pickle.loads(universal_set)
+    universal_set = read_postings_list(UNIVERSAL_SET_KEY)
 
     global total_count
     total_count = len(universal_set)
 
-    query_file = open(query_file_name, 'r')
+    # query_file = open(query_file_name, 'r')
 
-    for line in query_file:
-        pass
+    # for line in query_file:
+    #     pass
 
-    query_file.close()
+    # query_file.close()
 
     postings_file.close()
 
@@ -166,8 +167,37 @@ def toRPN(query):
 
     return rpn
 
+def apply_RPN(rpn):
+    stack = []
+    for element in rpn:
+        if element == 'NOT':
+            pass
+        elif element == 'AND':
+            pass
+        elif element == 'OR':
+            # a = stack.pop()
+            # b = stack.pop()
+            # c = union(read_postings_list(a), read_postings_list(b))
+            # stack.append(c)
+            pass
+        else:
+            stack.append(element)
+
+
+def read_postings_list(token):
+    """
+    Returns the entire postings list of a token.
+    """
+    start_ptr, end_ptr = ptr_dictionary[token]
+    postings_file.seek(start_ptr)
+    postings_list_pickle = postings_file.read(end_ptr - start_ptr)
+    postings_list = pickle.loads(postings_list_pickle)
+    return postings_list
+
+
 if __name__ == '__main__':
     # print intersect(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], ['1', '4', '9', '10'])
 
     # print union(['0', '2', '4', '6', '7', '8', '9', '10'], ['0', '1', '2', '3', '4', '5', '6'])
-    toRPN('bill OR Gates AND (vista OR XP) AND NOT mac')
+    # toRPN('bill OR Gates AND (vista OR XP) AND NOT mac')
+    execute_queries()
