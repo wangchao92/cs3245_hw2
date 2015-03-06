@@ -97,3 +97,4 @@ def build_index(directory_path='test', dictionary_file_name='dictionary.txt', po
 
 if __name__ == '__main__':
     build_index()
+    # main()

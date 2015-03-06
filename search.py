@@ -6,7 +6,6 @@ import string
 
 PUNCTUATION = set(string.punctuation)
 UNIVERSAL_SET_KEY = '.'
-NULL_SET_KEY = ','
 NOT_PREFIX = 'N_'
 OR_PREFIX = 'O_'
 AND_PREFIX = 'A_'
@@ -48,12 +47,15 @@ def execute_queries(dictionary_file_name='dictionary.txt', postings_file_name='p
     global results
     results = {}
 
+    global stemmer
+    stemmer = nltk.stem.porter.PorterStemmer()
+
     query_file = open(query_file_name, 'r')
 
     for line in query_file:
         results = {} # Clears the intermediate results, in case of conflicts.
-        print(line)
         print(apply_RPN(toRPN(line)))
+        print(line)
 
     query_file.close()
 
@@ -144,7 +146,9 @@ def union(list_a, list_b, negate_a=False, negate_b=False):
     return result
 
 def toRPN(query):
-    words = query.replace('(', ' ( ').replace(')', ' ) ').split() # "Spread" the parentheses.
+     # "Spread" the parentheses and replace NOT NOT with empty string.
+    words = query.replace('(', ' ( ').replace(')', ' ) ').replace('NOT NOT', '').split()
+
     operator_stack = [] # Temporary operator stack.
     rpn = [] # Final reverse polish notation list.
 
@@ -175,7 +179,7 @@ def toRPN(query):
             operator_stack.append('OR')
 
         else: # If it's a token, append to rpn.
-            rpn.append(word.lower())
+            rpn.append(stemmer.stem(word.lower()))
 
     while len(operator_stack) != 0: # Append remainder of operator stack to rpn.
         rpn.append(operator_stack.pop())
@@ -272,3 +276,4 @@ if __name__ == '__main__':
     # print union(['0', '2', '4', '6', '7', '8', '9', '10'], ['0', '1', '2', '3', '4', '5', '6'])
     # toRPN('bill OR Gates AND (vista OR XP) AND NOT mac')
     execute_queries()
+    # main()
