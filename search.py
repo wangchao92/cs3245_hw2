@@ -176,6 +176,9 @@ def union(list_a, list_b, negate_a=False, negate_b=False):
 
 
 def toRPN(query):
+    """
+    Converts the query string into reverse polish notation (rpn)
+    """
      # "Spread" the parentheses and replace NOT NOT with empty string.
     words = query.replace('(', ' ( ').replace(')', ' ) ').replace(
         'NOT NOT', '').split()
@@ -221,6 +224,9 @@ def toRPN(query):
 
 
 def apply_RPN(rpn):
+    """
+    Applies and runs through the reverse polish notation (rpn) to obtain desired result.
+    """
     # Clears the intermediate results, in case of conflicts.
     global results
     results = {}
@@ -237,15 +243,20 @@ def apply_RPN(rpn):
         if element == 'NOT':
             a = stack.pop()
 
-            # Only negate operation if NOT is the last element.
-            if i == len(rpn) - 1:
-                a_list = get_postings_list(
-                    a if a[0:2] != NOT_PREFIX else a[2:])
-                result = negate(a_list)
+            # If element has NOT_PREFIX, un-NOT it.
+            if a[0:2] == NOT_PREFIX:
+                stack.append(a[2:])
 
-            # Push the new key into the stack of operands.
-            result_key = NOT_PREFIX + a
-            stack.append(result_key)
+            else:
+                # Only negate operation if NOT is the last element.
+                if i == len(rpn) - 1:
+                    a_list = get_postings_list(
+                        a if a[0:2] != NOT_PREFIX else a[2:])
+                    result = negate(a_list)
+
+                # Push the new key into the stack of operands.
+                result_key = NOT_PREFIX + a
+                stack.append(result_key)
 
         elif element == 'AND':
             a = stack.pop()
@@ -302,14 +313,15 @@ def read_postings_list(term):
     """
     Returns the postings list for the term.
     """
+    # Returns empty list if not found.
     if term not in ptr_dictionary:
         return []
 
-    start_ptr, end_ptr = ptr_dictionary[term]
+    start_ptr, end_ptr = ptr_dictionary[term] # Retrieve the start and end pointers,
 
-    postings_file.seek(start_ptr)
-    postings_list_pickle = postings_file.read(end_ptr - start_ptr)
-    postings_list = pickle.loads(postings_list_pickle)
+    postings_file.seek(start_ptr) # Position at start pointer in the postings file,
+    postings_list_pickle = postings_file.read(end_ptr - start_ptr) # Retrieve the pickle data,
+    postings_list = pickle.loads(postings_list_pickle) # Un-pickle the data.
 
     return postings_list
 
