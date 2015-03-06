@@ -288,28 +288,29 @@ def apply_RPN(rpn):
     return result
 
 
-def get_postings_list(token):
+def get_postings_list(term):
     """
-    Returns an existing, calculated result or
-    reads from the postings file by the token.
+    Retrieves the postings list for the term if it is not already in memory, and returns it.
     """
-    if token in results:
-        return results[token]
+    if term in results:
+        return results[term]
     else:
-        return read_postings_list(token)
+        return read_postings_list(term)
 
 
-def read_postings_list(token):
+def read_postings_list(term):
     """
-    Returns the entire postings list of a token.
+    Returns the postings list for the term.
     """
-    if token not in ptr_dictionary:
+    if term not in ptr_dictionary:
         return []
 
-    start_ptr, end_ptr = ptr_dictionary[token]
+    start_ptr, end_ptr = ptr_dictionary[term]
+
     postings_file.seek(start_ptr)
     postings_list_pickle = postings_file.read(end_ptr - start_ptr)
     postings_list = pickle.loads(postings_list_pickle)
+
     return postings_list
 
 
