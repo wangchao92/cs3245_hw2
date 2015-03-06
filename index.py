@@ -7,6 +7,7 @@ import string
 PUNCTUATION = set(string.punctuation)
 UNIVERSAL_SET_KEY = '.'
 
+
 def main():
     parser = argparse.ArgumentParser(
         prog='CS3245 HW2', description='CS3245 HW2')
@@ -23,45 +24,55 @@ def main():
 
 
 def build_index(directory_path='test', dictionary_file_name='dictionary.txt', postings_file_name='postings.txt'):
+    # Sort file names numerically, not lexicographically
     doc_file_names = os.listdir(directory_path)
-    doc_file_names.sort(key=int) # Such that it'll be 1, 2, 11 instead of 1, 11, 2.
+    doc_file_names.sort(key=int)
 
     stemmer = nltk.stem.porter.PorterStemmer()
 
     postings_lists = {}
     postings_lists[UNIVERSAL_SET_KEY] = []
 
-    # Generating the postings_lists dictionary.
+    # Build postings lists; treat doc file names as doc ids
     for doc_file_name in doc_file_names:
         doc_file_path = os.path.join(directory_path, doc_file_name)
         doc = open(doc_file_path, 'r')
 
+        # Add doc id to universal set
         postings_lists[UNIVERSAL_SET_KEY].append(int(doc_file_name))
 
         seen_terms = set()
 
         for line in doc:
             tokens = nltk.word_tokenize(line)
+
+            # terms is an array of stemmed lowercase tokens that are not
+            # punctuation
             terms = [stemmer.stem(token.lower())
                      for token in tokens if token not in PUNCTUATION]
-            # terms are an array of stemmed, lowercase tokens stripped of punctuation.
 
             for term in terms:
+                # Avoid duplicate doc ids for the same term
                 if term not in seen_terms:
                     seen_terms.add(term)
 
+                    # Initialise postings list for new term
                     if term not in postings_lists:
                         postings_lists[term] = []
 
+                    # Add doc id to postings list
                     postings_lists[term].append(int(doc_file_name))
 
         doc.close()
 
-    # Writing to postings.txt, with start and end pointers for each token.
+    # Stores start/end pointers to postings list within postings file
+    # To be written to the dictionary file
     ptr_dictionary = {}
 
+    # Stores postings lists
     postings_file = open(postings_file_name, 'w')
 
+    # Write postings lists to file, storing start/end pointers
     for term, postings_list in postings_lists.iteritems():
         start_ptr = postings_file.tell()
 
@@ -74,24 +85,7 @@ def build_index(directory_path='test', dictionary_file_name='dictionary.txt', po
 
     postings_file.close()
 
-    # copy_postings_lists = {}
-    # with open(postings_file_name, 'r') as postings_file:
-    #     for term, (start_ptr, end_ptr) in ptr_dictionary.iteritems():
-    #         postings_file.seek(start_ptr)
-
-    #         postings_list = postings_file.read(end_ptr - start_ptr)
-    #         postings_list = pickle.loads(postings_list)
-
-    #         copy_postings_lists[term] = postings_list
-
-    # for term, postings_list in postings_lists.iteritems():
-    #     print term, postings_list
-    #     print term, copy_postings_lists[term]
-
-    # print len(postings_lists[UNIVERSAL_SET_KEY]) # printed 7769 for training
-
-
-    # Writing to dictionary.txt.
+    # Write dictionary to file
     with open(dictionary_file_name, 'w') as dictionary_file:
         pickle.dump(ptr_dictionary, dictionary_file)
 

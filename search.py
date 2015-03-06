@@ -10,6 +10,12 @@ NOT_PREFIX = 'N_'
 OR_PREFIX = 'O_'
 AND_PREFIX = 'A_'
 
+ptr_dictionary = None
+postings_file = None
+universal_set = None
+stemmer = None
+results = None
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -30,9 +36,8 @@ def main():
 
 
 def execute_queries(dictionary_file_name='dictionary.txt', postings_file_name='postings.txt', query_file_name='query.txt', output_file_name='output.txt'):
-    global ptr_dictionary
-    ptr_dictionary = None
     with open(dictionary_file_name, 'r') as dictionary_file:
+        global ptr_dictionary
         ptr_dictionary = pickle.load(dictionary_file)
 
     global postings_file
@@ -41,28 +46,26 @@ def execute_queries(dictionary_file_name='dictionary.txt', postings_file_name='p
     global universal_set
     universal_set = read_postings_list(UNIVERSAL_SET_KEY)
 
-    global total_count
-    total_count = len(universal_set)
-
-    global results # Intermediate results of union and intersects.
-    results = {}
-
     global stemmer
     stemmer = nltk.stem.porter.PorterStemmer()
 
     query_file = open(query_file_name, 'r')
+    output_file = open(output_file_name, 'w')
 
     for line in query_file:
-        results = {} # Clears the intermediate results, in case of conflicts.
-        print(apply_RPN(toRPN(line)))
-        print(line)
+        result = apply_RPN(toRPN(line))
+        output_file.write(' '.join(str(doc_id) for doc_id in result))
+        output_file.write('\n')
 
+    output_file.close()
     query_file.close()
-
     postings_file.close()
 
 
 def negate(postings_list):
+    """
+    Returns the complement of the given postings list.
+    """
     result = [
         doc_id for doc_id in universal_set if doc_id not in set(postings_list)]
 
@@ -70,11 +73,21 @@ def negate(postings_list):
 
 
 def intersect(list_a, list_b, negate_a=False, negate_b=False):
+    """
+    Returns the intersection of two postings lists.
+
+    Keyword arguments:
+    negate_a -- if the complement of list_a should be used
+    negate_b -- if the complement of list_b should be used
+    """
+    if negate_a and negate_b:
+        # NOT a AND NOT b = NOT (a OR b)
+        return negate(union(list_a, list_b))
+
     result = []
 
-    if negate_a and negate_b:
-        return negate(union(list_a, list_b))
-    elif negate_a is not negate_b:
+    if negate_a is not negate_b:
+        # Change NOT a AND b to a AND NOT b
         if negate_a:
             list_a, list_b = list_b, list_a
 
@@ -84,20 +97,26 @@ def intersect(list_a, list_b, negate_a=False, negate_b=False):
             while j < len(list_b) and doc_id > list_b[j]:
                 j += 1
 
-            # Add doc_id if it is less than current list_b element, or we have reached the end of list_b
+            # Add doc_id if we reached the end of list_b, or if it is less than
+            # current list_b element
             if j == len(list_b) or doc_id < list_b[j]:
                 result.append(doc_id)
     else:
+        # Skip distance
         sqrt_a = int(math.sqrt(len(list_a)))
         sqrt_b = int(math.sqrt(len(list_b)))
 
         i = j = 0
         while i < len(list_a) and j < len(list_b):
-            if list_a[i] == list_b[j]:
+            if list_a[i] == list_b[j]:  # a = b
                 result.append(list_a[i])
                 i += 1
                 j += 1
-            elif list_a[i] > list_b[j]:
+            elif list_a[i] > list_b[j]:  # a > b
+                # Skip if:
+                # 1. Index divides sqrt_b
+                # 2. Index + sqrt_b is not out of bounds
+                # 3. a > skip_successor(b)
                 if j % sqrt_b == 0 and j + sqrt_b < len(list_b) and list_a[i] >= list_b[j + sqrt_b]:
                     j += sqrt_b
                 else:
@@ -112,8 +131,18 @@ def intersect(list_a, list_b, negate_a=False, negate_b=False):
 
 
 def union(list_a, list_b, negate_a=False, negate_b=False):
+    """
+    Returns the union of two postings lists.
+
+    Keyword arguments:
+    negate_a -- if the complement of list_a should be used
+    negate_b -- if the complement of list_b should be used
+    """
     if negate_a and negate_b:
+        # NOT a OR NOT b = NOT (a AND b)
         return negate(intersect(list_a, list_b))
+
+    result = []
 
     if negate_a:
         list_a = negate(list_a)
@@ -121,7 +150,6 @@ def union(list_a, list_b, negate_a=False, negate_b=False):
     if negate_b:
         list_b = negate(list_b)
 
-    result = []
     i = j = 0
     while i < len(list_a) and j < len(list_b):
         if list_a[i] == list_b[j]:
@@ -135,6 +163,7 @@ def union(list_a, list_b, negate_a=False, negate_b=False):
             result.append(list_a[i])
             i += 1
 
+    # Add remaining elements in the longer list
     while i < len(list_a):
         result.append(list_a[i])
         i += 1
@@ -145,21 +174,20 @@ def union(list_a, list_b, negate_a=False, negate_b=False):
 
     return result
 
-def toRPN(query):
-    """
-    Converts the query string into reverse polish notation (rpn).
-    """
-    # "Spread" the parentheses and replace NOT NOT with empty string.
-    words = query.replace('(', ' ( ').replace(')', ' ) ').replace('NOT NOT', '').split()
 
-    operator_stack = [] # Temporary operator stack.
-    rpn = [] # Final reverse polish notation list.
+def toRPN(query):
+     # "Spread" the parentheses and replace NOT NOT with empty string.
+    words = query.replace('(', ' ( ').replace(')', ' ) ').replace(
+        'NOT NOT', '').split()
+
+    operator_stack = []  # Temporary operator stack.
+    rpn = []  # Final reverse polish notation list.
 
     for word in words:
         if word == '(':
             operator_stack.append('(')
 
-        elif word == ')': # Pop everything until a ) is found, then pop ).
+        elif word == ')':  # Pop everything until a ) is found, then pop ).
             while len(operator_stack) != 0 and operator_stack[len(operator_stack) - 1] != '(':
                 rpn.append(operator_stack.pop())
 
@@ -169,34 +197,39 @@ def toRPN(query):
         elif word == 'NOT':
             operator_stack.append('NOT')
 
-        elif word == 'AND': # Pop all NOTs before appending to operator stack.
+        elif word == 'AND':  # Pop all NOTs before appending to operator stack.
             while len(operator_stack) != 0 and operator_stack[len(operator_stack) - 1] == 'NOT':
                 rpn.append(operator_stack.pop())
 
             operator_stack.append('AND')
 
-        elif word == 'OR': # Pop all NOTs and ANDs before appending to operator stack.
+        # Pop all NOTs and ANDs before appending to operator stack.
+        elif word == 'OR':
             while len(operator_stack) != 0 and (operator_stack[len(operator_stack) - 1] == 'NOT' or operator_stack[len(operator_stack) - 1] == 'AND'):
                 rpn.append(operator_stack.pop())
 
             operator_stack.append('OR')
 
-        else: # If it's a token, append to rpn.
+        else:  # If it's a token, append to rpn.
             rpn.append(stemmer.stem(word.lower()))
 
-    while len(operator_stack) != 0: # Append remainder of operator stack to rpn.
+    # Append remainder of operator stack to rpn.
+    while len(operator_stack) != 0:
         rpn.append(operator_stack.pop())
 
     return rpn
 
-def apply_RPN(rpn):
-    """
-    Applies the reverse polish notation (rpn) to obtain desired result.
-    """
-    stack = [] # Stack of operands.
-    result = [] # We will return this at the end of the method. 
 
-    result = get_postings_list(rpn[0]) # Gets the posting list of the first operand.
+def apply_RPN(rpn):
+    # Clears the intermediate results, in case of conflicts.
+    global results
+    results = {}
+
+    stack = []  # Stack of operands.
+    result = []  # We will return this at the end of the method.
+
+    # Gets the posting list of the first operand.
+    result = get_postings_list(rpn[0])
 
     # For each element in the rpn...
     for i, element in enumerate(rpn):
@@ -204,18 +237,15 @@ def apply_RPN(rpn):
         if element == 'NOT':
             a = stack.pop()
 
-            # If element has NOT_PREFIX, un-NOT it.
-            if a[0:2] == NOT_PREFIX:
-                stack.append(a[2:])
+            # Only negate operation if NOT is the last element.
+            if i == len(rpn) - 1:
+                a_list = get_postings_list(
+                    a if a[0:2] != NOT_PREFIX else a[2:])
+                result = negate(a_list)
 
-            else:
-                if i == len(rpn) - 1: # Only negate operation if NOT is the last element.
-                    a_list = get_postings_list(a if a[0:2] != NOT_PREFIX else a[2:])
-                    result = negate(a_list) if a[0:2] != NOT_PREFIX else a_list
-
-                # Push the new key into the stack of operands.
-                result_key = NOT_PREFIX + a
-                stack.append(result_key)
+            # Push the new key into the stack of operands.
+            result_key = NOT_PREFIX + a
+            stack.append(result_key)
 
         elif element == 'AND':
             a = stack.pop()
@@ -226,7 +256,8 @@ def apply_RPN(rpn):
             b_list = get_postings_list(b if b[0:2] != NOT_PREFIX else b[2:])
 
             # Intersection of a and b, and whether a or b are to be negated.
-            result = intersect(a_list, b_list, a[0:2] == NOT_PREFIX, b[0:2] == NOT_PREFIX)
+            result = intersect(
+                a_list, b_list, a[0:2] == NOT_PREFIX, b[0:2] == NOT_PREFIX)
 
             # Push the new key into results and the stack of operands.
             result_key = AND_PREFIX + a + '_' + b
@@ -242,7 +273,8 @@ def apply_RPN(rpn):
             b_list = get_postings_list(b if b[0:2] != NOT_PREFIX else b[2:])
 
             # Union of a and b, and whether a or b are to be negated.
-            result = union(a_list, b_list, a[0:2] == NOT_PREFIX, b[0:2] == NOT_PREFIX)
+            result = union(
+                a_list, b_list, a[0:2] == NOT_PREFIX, b[0:2] == NOT_PREFIX)
 
             # Push the new key into results and the stack of operands.
             result_key = OR_PREFIX + a + '_' + b
@@ -271,20 +303,16 @@ def read_postings_list(token):
     """
     Returns the entire postings list of a token.
     """
-    if token not in ptr_dictionary: # Return empty list if token not found.
+    if token not in ptr_dictionary:
         return []
 
-    start_ptr, end_ptr = ptr_dictionary[token] # Retrieve the start and end pointers,
-    postings_file.seek(start_ptr) # Position at start pointer in the postings file,
-    postings_list_pickle = postings_file.read(end_ptr - start_ptr) # Retrieve the pickle data,
-    postings_list = pickle.loads(postings_list_pickle) # Un-pickle the data.
+    start_ptr, end_ptr = ptr_dictionary[token]
+    postings_file.seek(start_ptr)
+    postings_list_pickle = postings_file.read(end_ptr - start_ptr)
+    postings_list = pickle.loads(postings_list_pickle)
     return postings_list
 
 
 if __name__ == '__main__':
-    # print intersect(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], ['1', '4', '9', '10'])
-
-    # print union(['0', '2', '4', '6', '7', '8', '9', '10'], ['0', '1', '2', '3', '4', '5', '6'])
-    # toRPN('bill OR Gates AND (vista OR XP) AND NOT mac')
     execute_queries()
     # main()
