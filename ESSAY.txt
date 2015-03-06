@@ -1,0 +1,18 @@
+1)
+We are only loading the postings lists for the query terms and not the entire postings file. Hence, number entries only take up disk storage when not needed; they do not impact search time. Keeping them allows us to query using numbers, especially those which are meaningful. Certain numbers carry important context, such as years for four digit numbers beginning with "19" or "20", or serial numbers of products, e.g. ISBN.
+
+One method to normalize numbers will be to extract them from context, such as "36degC" to "36", or 9/8/1965 into "9", "8", and "1965". Alternatively, in the case of serial numbers, removing punctuation between numbers so that the numbers are captured as a single string. Normalizing should be done both on indexing and querying, just like stemming of words.
+
+Removing numbers (by checking if they were floats) caused the dictionary file size to decrease from 1.5 MB to 1.3 MB (~13.3% decrease) and the postings file size from 4.3 MB to 4 MB (~7% decrease).
+
+
+2)
+Stopwords account for ~30% of all words in English. Eliminating stopwords should shrink the postings file by a similar amount, and barely impact dictionary file size. The dictionary file size stayed the same at 1.5 MB. The postings file size dropped from 4.3 MB to 3.6 MB, a ~16.3% decrease. A boolean query containing stopwords is not very useful since stopwords are found in most documents. For boolean queries without stopwords, search time should not be impacted because we are only loading the postings lists for the query terms and not the entire postings file.
+
+
+3)
+We did not use `sent_tokenize()` as `word_tokenize()` is sufficient for splitting the document text into tokens for indexing, also since parsing of the document text is done line by line, which renders `sent_tokenize` useless.
+
+One of the consequences of using `word_tokenize()` is that words which are concatenated together with punctuation are considered as single term, e.g. "and/or", when it should be "and" and "or". Hyphens in this case are tokenized correctly, since words such as "first-class" should be considered a single token.
+
+It will be possible for us to manually determine which punctuation characters should not be used to concatenate several words as a single term, by using another function to split apart such terms.

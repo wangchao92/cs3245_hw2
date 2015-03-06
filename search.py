@@ -327,5 +327,4 @@ def read_postings_list(term):
 
 
 if __name__ == '__main__':
-    execute_queries()
-    # main()
+    main()

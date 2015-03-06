@@ -27,7 +27,7 @@ def main():
     build_index(directory_path, dictionary_file_name, postings_file_name)
 
 
-def build_index(directory_path='/home/blym/nltk_data/corpora/reuters/training/', dictionary_file_name='dictionary.txt', postings_file_name='postings.txt'):
+def build_index(directory_path='training/', dictionary_file_name='dictionary.txt', postings_file_name='postings.txt'):
     # Sort file names numerically, not lexicographically
     doc_file_names = os.listdir(directory_path)
     doc_file_names.sort(key=int)
@@ -94,5 +94,4 @@ def build_index(directory_path='/home/blym/nltk_data/corpora/reuters/training/',
         pickle.dump(ptr_dictionary, dictionary_file)
 
 if __name__ == '__main__':
-    build_index()
-    # main()
+    main()
